@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Emoji Pet Soccer Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #87CEEB;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #field {
+      position: absolute;
+      width: 80%;
+      height: 70%;
+      left: 10%;
+      top: 15%;
+      background-color: #4CAF50;
+      border: 5px solid white;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+    
+    .goal {
+      position: absolute;
+      width: 10%;
+      height: 30%;
+      background-color: rgba(255,255,255,0.3);
+      border: 3px solid white;
+      top: 35%;
+      z-index: 10;
+    }
+    
+    .goal-net {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.3) 10px, rgba(255,255,255,0.3) 20px);
+      z-index: 5;
+    }
+    
+    #left-goal {
+      left: -3px;
+      border-right: none;
+      border-top-left-radius: 10px;
+      border-bottom-left-radius: 10px;
+    }
+    
+    #right-goal {
+      right: -3px;
+      border-left: none;
+      border-top-right-radius: 10px;
+      border-bottom-right-radius: 10px;
+    }
+    
+    .center-circle {
+      position: absolute;
+      width: 20%;
+      height: 28%;
+      border: 2px solid white;
+      border-radius: 50%;
+      left: 40%;
+      top: 36%;
+    }
+    
+    .center-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: white;
+      border-radius: 50%;
+      left: calc(50% - 5px);
+      top: calc(50% - 5px);
+    }
+    
+    .half-line {
+      position: absolute;
+      width: 2px;
+      height: 100%;
+      background-color: white;
+      left: 50%;
+    }
+    
+    .player {
+      position: absolute;
+      font-size: 2.5rem;
+      user-select: none;
+      transform: translate(-50%, -50%);
+      transition: transform 0.1s ease;
+      z-index: 20;
+    }
+    
+    .team1 {
+      text-shadow: 0 0 5px blue;
+    }
+    
+    .team2 {
+      text-shadow: 0 0 5px red;
+    }
+    
+    .player.active {
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+    
+    #ball {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3ccircle cx='50' cy='50' r='48' fill='white' stroke='black' stroke-width='2'/%3e%3cpath d='M50 2 L50 98 M2 50 L98 50 M26 14 L74 86 M74 14 L26 86' stroke='black' stroke-width='2' fill='none'/%3e%3c/svg%3e");
+      background-size: cover;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      z-index: 15;
+    }
+    
+    #scoreboard {
+      position: absolute;
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    #controls {
+      position: absolute;
+      bottom: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      text-align: center;
+      width: 80%;
+      max-width: 800px;
+    }
+    
+    #message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 36px;
+      text-align: center;
+      display: none;
+      z-index: 100;
+    }
+    
+    .goal-animation {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.2);
+      display: none;
+      z-index: 50;
+      animation: flash 0.5s ease-in-out 3;
+    }
+    
+    @keyframes flash {
+      0% { opacity: 0; }
+      50% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="field">
+      <div class="half-line"></div>
+      <div class="center-circle"></div>
+      <div class="center-dot"></div>
+      <div id="left-goal" class="goal">
+        <div class="goal-net"></div>
+      </div>
+      <div id="right-goal" class="goal">
+        <div class="goal-net"></div>
+      </div>
+      <div class="goal-animation" id="goal-flash"></div>
+    </div>
+    <div id="scoreboard">Team 🔵 0 - 0 Team 🔴</div>
+    <div id="controls">
+      <p>Team 🔵 Controls: WASD for movement, SPACE to switch active player</p>
+      <p>Team 🔴 Controls: Arrow Keys for movement, ENTER to switch active player</p>
+      <p>Press R to reset the game</p>
+    </div>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const field = document.getElementById('field');
+      const scoreboard = document.getElementById('scoreboard');
+      const message = document.getElementById('message');
+      const goalFlash = document.getElementById('goal-flash');
+      const leftGoal = document.getElementById('left-goal');
+      const rightGoal = document.getElementById('right-goal');
+      
+      // Get goal positions and dimensions
+      const leftGoalRect = {
+        x: leftGoal.offsetLeft,
+        y: leftGoal.offsetTop,
+        width: leftGoal.offsetWidth,
+        height: leftGoal.offsetHeight
+      };
+      
+      const rightGoalRect = {
+        x: rightGoal.offsetLeft,
+        y: rightGoal.offsetTop,
+        width: rightGoal.offsetWidth,
+        height: rightGoal.offsetHeight
+      };
+      
+      // Game state
+      const state = {
+        team1Score: 0,
+        team2Score: 0,
+        isPaused: false,
+        activePlayer1: 0,
+        activePlayer2: 0,
+        lastGoalTime: 0
+      };
+
+      // Emoji pets for the teams
+      const team1Emojis = ['🐶', '🐱', '🐭'];
+      const team2Emojis = ['🐰', '🐻', '🦊'];
+      
+      // Create soccer ball
+      const ball = document.createElement('div');
+      ball.id = 'ball';
+      field.appendChild(ball);
+      
+      // Ball physics
+      const ballPhysics = {
+        x: field.offsetWidth / 2,
+        y: field.offsetHeight / 2,
+        vx: 0,
+        vy: 0,
+        friction: 0.98,
+        speed: 0.5,
+        radius: 15 // Ball radius in pixels
+      };
+      
+      // Create players
+      const players = [];
+      
+      // Team 1 (Blue)
+      team1Emojis.forEach((emoji, index) => {
+        const player = document.createElement('div');
+        player.className = 'player team1';
+        player.textContent = emoji;
+        
+        const xPos = field.offsetWidth * 0.25 + (index - 1) * (field.offsetWidth * 0.1);
+        const yPos = field.offsetHeight * (0.3 + index * 0.2);
+        
+        player.style.left = `${xPos}px`;
+        player.style.top = `${yPos}px`;
+        
+        field.appendChild(player);
+        
+        players.push({
+          element: player,
+          team: 1,
+          x: xPos,
+          y: yPos,
+          vx: 0,
+          vy: 0,
+          speed: 5
+        });
+
+        if (index === state.activePlayer1) {
+          player.classList.add('active');
+        }
+      });
+      
+      // Team 2 (Red)
+      team2Emojis.forEach((emoji, index) => {
+        const player = document.createElement('div');
+        player.className = 'player team2';
+        player.textContent = emoji;
+        
+        const xPos = field.offsetWidth * 0.75 - (index - 1) * (field.offsetWidth * 0.1);
+        const yPos = field.offsetHeight * (0.3 + index * 0.2);
+        
+        player.style.left = `${xPos}px`;
+        player.style.top = `${yPos}px`;
+        
+        field.appendChild(player);
+        
+        players.push({
+          element: player,
+          team: 2,
+          x: xPos,
+          y: yPos,
+          vx: 0,
+          vy: 0,
+          speed: 5
+        });
+
+        if (index === state.activePlayer2) {
+          player.classList.add('active');
+        }
+      });
+      
+      // Keyboard controls
+      const keys = {};
+      
+      window.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+        
+        // Switch active player
+        if (e.key === ' ') { // Space for Team 1
+          players[state.activePlayer1].element.classList.remove('active');
+          state.activePlayer1 = (state.activePlayer1 + 1) % 3;
+          players[state.activePlayer1].element.classList.add('active');
+        }
+        
+        if (e.key === 'Enter') { // Enter for Team 2
+          players[3 + state.activePlayer2].element.classList.remove('active');
+          state.activePlayer2 = (state.activePlayer2 + 1) % 3;
+          players[3 + state.activePlayer2].element.classList.add('active');
+        }
+        
+        // Reset game
+        if (e.key.toLowerCase() === 'r') {
+          resetGame();
+        }
+      });
+      
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+      });
+      
+      // Check if ball is inside a goal
+      function checkGoal() {
+        const currentTime = Date.now();
+        
+        // Only check for goals if enough time has passed since the last goal
+        if (currentTime - state.lastGoalTime < 2000) {
+          return false;
+        }
+        
+        // Left goal (Team 2 scores)
+        if (
+          ballPhysics.x - ballPhysics.radius <= leftGoalRect.x + leftGoalRect.width &&
+          ballPhysics.y >= leftGoalRect.y &&
+          ballPhysics.y <= leftGoalRect.y + leftGoalRect.height
+        ) {
+          state.lastGoalTime = currentTime;
+          state.team2Score++;
+          updateScoreboard();
+          celebrateGoal('GOAL! Team 🔴 scored!', 'red');
+          return true;
+        }
+        
+        // Right goal (Team 1 scores)
+        if (
+          ballPhysics.x + ballPhysics.radius >= rightGoalRect.x &&
+          ballPhysics.y >= rightGoalRect.y &&
+          ballPhysics.y <= rightGoalRect.y + rightGoalRect.height
+        ) {
+          state.lastGoalTime = currentTime;
+          state.team1Score++;
+          updateScoreboard();
+          celebrateGoal('GOAL! Team 🔵 scored!', 'blue');
+          return true;
+        }
+        
+        return false;
+      }
+      
+      // Game loop
+      function gameLoop() {
+        if (!state.isPaused) {
+          // Team 1 movement (WASD)
+          const activePlayer1 = players[state.activePlayer1];
+          activePlayer1.vx = 0;
+          activePlayer1.vy = 0;
+          
+          if (keys['w']) activePlayer1.vy = -activePlayer1.speed;
+          if (keys['s']) activePlayer1.vy = activePlayer1.speed;
+          if (keys['a']) activePlayer1.vx = -activePlayer1.speed;
+          if (keys['d']) activePlayer1.vx = activePlayer1.speed;
+          
+          // Team 2 movement (Arrow Keys)
+          const activePlayer2 = players[3 + state.activePlayer2];
+          activePlayer2.vx = 0;
+          activePlayer2.vy = 0;
+          
+          if (keys['arrowup']) activePlayer2.vy = -activePlayer2.speed;
+          if (keys['arrowdown']) activePlayer2.vy = activePlayer2.speed;
+          if (keys['arrowleft']) activePlayer2.vx = -activePlayer2.speed;
+          if (keys['arrowright']) activePlayer2.vx = activePlayer2.speed;
+          
+          // Update player positions
+          players.forEach(player => {
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // Field boundaries for players
+            player.x = Math.max(20, Math.min(field.offsetWidth - 20, player.x));
+            player.y = Math.max(20, Math.min(field.offsetHeight - 20, player.y));
+            
+            player.element.style.left = `${player.x}px`;
+            player.element.style.top = `${player.y}px`;
+            
+            // Check for ball collision
+            const dx = ballPhysics.x - player.x;
+            const dy = ballPhysics.y - player.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 40) { // Collision detected
+              const angle = Math.atan2(dy, dx);
+              const power = (player.vx * player.vx + player.vy * player.vy) * 0.5 + 2;
+              
+              ballPhysics.vx = Math.cos(angle) * power;
+              ballPhysics.vy = Math.sin(angle) * power;
+              
+              // Add a slight spin effect to the ball
+              if (Math.abs(player.vx) > Math.abs(player.vy)) {
+                ballPhysics.vy += (Math.random() - 0.5) * 2;
+              } else {
+                ballPhysics.vx += (Math.random() - 0.5) * 2;
+              }
+            }
+          });
+          
+          // Update ball position
+          ballPhysics.vx *= ballPhysics.friction;
+          ballPhysics.vy *= ballPhysics.friction;
+          ballPhysics.x += ballPhysics.vx;
+          ballPhysics.y += ballPhysics.vy;
+          
+          // Check for goals
+          const isGoal = checkGoal();
+          
+          if (!isGoal) {
+            // Regular ball boundaries (only apply if not a goal)
+            if (ballPhysics.x < ballPhysics.radius && 
+                (ballPhysics.y < leftGoalRect.y || 
+                 ballPhysics.y > leftGoalRect.y + leftGoalRect.height)) {
+              ballPhysics.x = ballPhysics.radius;
+              ballPhysics.vx *= -0.7;
+            }
+            
+            if (ballPhysics.x > field.offsetWidth - ballPhysics.radius && 
+                (ballPhysics.y < rightGoalRect.y || 
+                 ballPhysics.y > rightGoalRect.y + rightGoalRect.height)) {
+              ballPhysics.x = field.offsetWidth - ballPhysics.radius;
+              ballPhysics.vx *= -0.7;
+            }
+            
+            if (ballPhysics.y < ballPhysics.radius) {
+              ballPhysics.y = ballPhysics.radius;
+              ballPhysics.vy *= -0.7;
+            }
+            
+            if (ballPhysics.y > field.offsetHeight - ballPhysics.radius) {
+              ballPhysics.y = field.offsetHeight - ballPhysics.radius;
+              ballPhysics.vy *= -0.7;
+            }
+          }
+          
+          // Rotate the ball based on its movement
+          const rotation = Math.atan2(ballPhysics.vy, ballPhysics.vx) * (180 / Math.PI);
+          const speed = Math.sqrt(ballPhysics.vx * ballPhysics.vx + ballPhysics.vy * ballPhysics.vy);
+          
+          ball.style.left = `${ballPhysics.x}px`;
+          ball.style.top = `${ballPhysics.y}px`;
+          ball.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+        }
+        
+        requestAnimationFrame(gameLoop);
+      }
+      
+      // Update scoreboard
+      function updateScoreboard() {
+        scoreboard.textContent = `Team 🔵 ${state.team1Score} - ${state.team2Score} Team 🔴`;
+      }
+      
+      // Reset ball to center
+      function resetBall() {
+        ballPhysics.x = field.offsetWidth / 2;
+        ballPhysics.y = field.offsetHeight / 2;
+        ballPhysics.vx = 0;
+        ballPhysics.vy = 0;
+        
+        ball.style.left = `${ballPhysics.x}px`;
+        ball.style.top = `${ballPhysics.y}px`;
+        ball.style.transform = `translate(-50%, -50%) rotate(0deg)`;
+      }
+      
+      // Reset the entire game
+      function resetGame() {
+        state.team1Score = 0;
+        state.team2Score = 0;
+        updateScoreboard();
+        resetBall();
+        
+        // Reset player positions
+        team1Emojis.forEach((_, index) => {
+          const player = players[index];
+          const xPos = field.offsetWidth * 0.25 + (index - 1) * (field.offsetWidth * 0.1);
+          const yPos = field.offsetHeight * (0.3 + index * 0.2);
+          
+          player.x = xPos;
+          player.y = yPos;
+          player.element.style.left = `${xPos}px`;
+          player.element.style.top = `${yPos}px`;
+        });
+        
+        team2Emojis.forEach((_, index) => {
+          const player = players[index + 3];
+          const xPos = field.offsetWidth * 0.75 - (index - 1) * (field.offsetWidth * 0.1);
+          const yPos = field.offsetHeight * (0.3 + index * 0.2);
+          
+          player.x = xPos;
+          player.y = yPos;
+          player.element.style.left = `${xPos}px`;
+          player.element.style.top = `${yPos}px`;
+        });
+      }
+      
+      // Show goal celebration message
+      function celebrateGoal(text, color) {
+        state.isPaused = true;
+        message.textContent = text;
+        message.style.display = 'block';
+        
+        // Flash animation
+        goalFlash.style.backgroundColor = color === 'red' ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 0, 255, 0.2)';
+        goalFlash.style.display = 'block';
+        
+        setTimeout(() => {
+          message.style.display = 'none';
+          goalFlash.style.display = 'none';
+          resetBall();
+          state.isPaused = false;
+        }, 2000);
+      }
+      
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        // Update goal positions
+        setTimeout(() => {
+          leftGoalRect.x = leftGoal.offsetLeft;
+          leftGoalRect.y = leftGoal.offsetTop;
+          leftGoalRect.width = leftGoal.offsetWidth;
+          leftGoalRect.height = leftGoal.offsetHeight;
+          
+          rightGoalRect.x = rightGoal.offsetLeft;
+          rightGoalRect.y = rightGoal.offsetTop;
+          rightGoalRect.width = rightGoal.offsetWidth;
+          rightGoalRect.height = rightGoal.offsetHeight;
+        }, 100);
+      });
+      
+      // Start the game
+      gameLoop();
+      updateScoreboard();
+      resetBall();
+    });
+  </script>
+</body>
+</html>
